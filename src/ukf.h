@@ -97,17 +97,11 @@ public:
    */
   void Prediction(double delta_t);
 
-  /**
-   * Updates the state and the state covariance matrix using a laser measurement
-   * @param meas_package The measurement at k+1
-   */
-  void UpdateLidar(MeasurementPackage meas_package);
+  void CalculateSigmaPoints(double delta_t);
 
-  /**
-   * Updates the state and the state covariance matrix using a radar measurement
-   * @param meas_package The measurement at k+1
-   */
-  void UpdateRadar(MeasurementPackage meas_package);
+  void PredictXandP();
+
+  void Update(MeasurementPackage meas_package);
 };
 
 #endif /* UKF_H */

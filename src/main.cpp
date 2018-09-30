@@ -48,6 +48,8 @@ int main()
   vector<VectorXd> estimations;
   vector<VectorXd> ground_truth;
 
+  // Launch thread to check if we have stopped receing measurments
+  // Once we stop receiving measurements plot the NIS
   std::thread threadObj([&ukf, &then, &now, &receivedMeasurement]{
     bool receivingMessages = true;
     while(receivingMessages | !receivedMeasurement)
