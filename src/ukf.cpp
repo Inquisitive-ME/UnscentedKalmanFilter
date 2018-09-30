@@ -17,7 +17,7 @@ UKF::UKF() {
   previous_timestamp_ = 0;
 
   // if this is false, laser measurements will be ignored (except during init)
-  use_laser_ = false;
+  use_laser_ = true;
 
   // if this is false, radar measurements will be ignored (except during init)
   use_radar_ = true;
@@ -112,6 +112,7 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
       x_ << meas_package.raw_measurements_[0], meas_package.raw_measurements_[1], 0, 0, 0;
       is_initialized_ = true;
     }
+    previous_timestamp_ = meas_package.timestamp_;
   }
 
   if(is_initialized_)
@@ -282,6 +283,81 @@ void UKF::UpdateLidar(MeasurementPackage meas_package) {
 
   You'll also need to calculate the lidar NIS.
   */
+  VectorXd z = meas_package.raw_measurements_;
+
+  int n_z = 2;
+  //create matrix for sigma points in measurement space
+  MatrixXd Zsig = MatrixXd(n_z , 2 * n_aug_ + 1);
+
+/*******************************************************************************
+ * Lidar Measurement Update
+ ******************************************************************************/
+
+  //transform sigma points into measurement space
+  for (int i = 0; i < 2 * n_aug_ + 1; i++) {  //2n+1 simga points
+
+    // extract values for better readibility
+    double p_x = Xsig_pred_(0,i);
+    double p_y = Xsig_pred_(1,i);
+
+    // measurement model
+    Zsig(0,i) = p_x;      //px
+    Zsig(1,i) = p_y;      //py
+  }
+
+  //mean predicted measurement
+  VectorXd z_pred = VectorXd(n_z);
+  z_pred.fill(0.0);
+  for (int i=0; i < 2*n_aug_+1; i++) {
+    z_pred = z_pred + weights_(i) * Zsig.col(i);
+  }
+
+  //innovation covariance matrix S
+  MatrixXd S = MatrixXd(n_z, n_z);
+  S.fill(0.0);
+  for (int i = 0; i < 2 * n_aug_ + 1; i++) {  //2n+1 simga points
+    //residual
+    VectorXd z_diff = Zsig.col(i) - z_pred;
+
+    S = S + weights_(i) * z_diff * z_diff.transpose();
+  }
+
+  //add measurement noise covariance matrix
+  MatrixXd R = MatrixXd(n_z,n_z);
+  R <<    std_laspx_*std_laspx_, 0,
+      0, std_laspy_*std_laspy_;
+  S = S + R;
+
+  MatrixXd Tc = MatrixXd(n_x_, n_z);
+  Tc.fill(0.0);
+  //calculate cross correlation matrix
+  for (int i = 0; i < 2 * n_aug_ + 1; i++) {  //2n+1 simga points
+
+    //residual
+    VectorXd z_diff = Zsig.col(i) - z_pred;
+
+    // state difference
+    VectorXd x_diff = Xsig_pred_.col(i) - x_;
+    //angle normalization
+    while (x_diff(3)> M_PI) x_diff(3)-=2.*M_PI;
+    while (x_diff(3)<-M_PI) x_diff(3)+=2.*M_PI;
+
+    Tc = Tc + weights_(i) * x_diff * z_diff.transpose();
+  }
+
+  //Kalman gain K;
+  MatrixXd K = Tc * S.inverse();
+
+  //residual
+  VectorXd z_diff = z - z_pred;
+
+  //angle normalization
+  while (z_diff(1)> M_PI) z_diff(1)-=2.*M_PI;
+  while (z_diff(1)<-M_PI) z_diff(1)+=2.*M_PI;
+
+  //update state mean and covariance matrix
+  x_ = x_ + K * z_diff;
+  P_ = P_ - K*S*K.transpose();
 }
 
 /**
@@ -299,8 +375,10 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   */
 
   VectorXd z = meas_package.raw_measurements_;
+
+  int n_z = 3;
   //create matrix for sigma points in measurement space
-  MatrixXd Zsig = MatrixXd(3 , 2 * n_aug_ + 1);
+  MatrixXd Zsig = MatrixXd(n_z , 2 * n_aug_ + 1);
 
 /*******************************************************************************
  * Radar Measurement Update
@@ -325,14 +403,14 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   }
 
   //mean predicted measurement
-  VectorXd z_pred = VectorXd(3);
+  VectorXd z_pred = VectorXd(n_z);
   z_pred.fill(0.0);
   for (int i=0; i < 2*n_aug_+1; i++) {
     z_pred = z_pred + weights_(i) * Zsig.col(i);
   }
 
   //innovation covariance matrix S
-  MatrixXd S = MatrixXd(3, 3);
+  MatrixXd S = MatrixXd(n_z, n_z);
   S.fill(0.0);
   for (int i = 0; i < 2 * n_aug_ + 1; i++) {  //2n+1 simga points
     //residual
@@ -345,7 +423,7 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   }
 
   //add measurement noise covariance matrix
-  MatrixXd R = MatrixXd(3,3);
+  MatrixXd R = MatrixXd(n_z,n_z);
   R <<    std_radr_*std_radr_, 0, 0,
       0, std_radphi_*std_radphi_, 0,
       0, 0,std_radrd_*std_radrd_;
