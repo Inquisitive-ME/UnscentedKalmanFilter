@@ -6,8 +6,14 @@ add_definitions(-std=c++11)
 
 set(CXX_FLAGS "-Wall")
 set(CMAKE_CXX_FLAGS "${CXX_FLAGS}")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pthread")
 
-set(sources src/ukf.cpp src/main.cpp src/tools.cpp)
+find_package(PythonInterp REQUIRED)
+find_package(PythonLibs REQUIRED)
+
+include_directories(${PYTHON_INCLUDE_PATH})
+
+set(sources src/ukf.cpp src/main.cpp src/tools.cpp src/matplotlibcpp.h)
 
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin") 
@@ -23,4 +29,4 @@ endif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 
 add_executable(UnscentedKF ${sources})
 
-target_link_libraries(UnscentedKF z ssl uv uWS)
+target_link_libraries(UnscentedKF z ssl uv uWS ${PYTHON_LIBRARIES})

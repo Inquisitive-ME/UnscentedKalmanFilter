@@ -5,6 +5,12 @@
 #include "ukf.h"
 #include "tools.h"
 
+#include <chrono>
+#include <thread>
+#include "matplotlibcpp.h"
+
+namespace plt = matplotlibcpp;
+
 using namespace std;
 
 // for convenience
@@ -28,6 +34,10 @@ std::string hasData(std::string s) {
 
 int main()
 {
+  auto then = std::chrono::system_clock::now();
+  auto now = std::chrono::system_clock::now();
+  bool receivedMeasurement = false;
+
   uWS::Hub h;
 
   // Create a Kalman Filter instance
@@ -38,7 +48,41 @@ int main()
   vector<VectorXd> estimations;
   vector<VectorXd> ground_truth;
 
-  h.onMessage([&ukf,&tools,&estimations,&ground_truth](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
+  std::thread threadObj([&ukf, &then, &now, &receivedMeasurement]{
+    bool receivingMessages = true;
+    while(receivingMessages | !receivedMeasurement)
+    {
+      if(receivedMeasurement)
+      {
+        now = std::chrono::system_clock::now();
+        auto dur = now - then;
+
+        typedef std::chrono::duration<float> float_seconds;
+        auto secs = std::chrono::duration_cast<float_seconds>(dur);
+
+        if (secs > std::chrono::seconds(1))
+        {
+          std::cout << "Stopped Receiving Messages" << std::endl;
+          receivingMessages = false;
+        }
+      }
+    }
+    std::vector<float> lidar_baseline(ukf.NIS_Lidar_.size(),5.991);
+    plt::plot(ukf.NIS_Lidar_);
+    plt::plot(lidar_baseline);
+    plt::title("NIS Lidar");
+    plt::show();
+
+    std::vector<float> radar_baseline(ukf.NIS_Radar_.size(),7.815);
+    plt::plot(ukf.NIS_Radar_);
+    plt::plot(radar_baseline);
+    plt::title("NIS Radar");
+    plt::show();
+    });
+  threadObj.detach();
+
+  h.onMessage([&ukf,&tools,&estimations,&ground_truth, &then, &receivedMeasurement](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
+
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
     // The 2 signifies a websocket event
@@ -90,7 +134,7 @@ int main()
           		iss >> timestamp;
           		meas_package.timestamp_ = timestamp;
           }
-          float x_gt;
+        float x_gt;
     	  float y_gt;
     	  float vx_gt;
     	  float vy_gt;
@@ -139,6 +183,12 @@ int main()
           auto msg = "42[\"estimate_marker\"," + msgJson.dump() + "]";
           // std::cout << msg << std::endl;
           ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
+
+          if(!receivedMeasurement)
+          {
+            receivedMeasurement = true;
+          }
+          then = std::chrono::system_clock::now();
 	  
         }
       } else {
@@ -185,6 +235,7 @@ int main()
     return -1;
   }
   h.run();
+
 }
 
 

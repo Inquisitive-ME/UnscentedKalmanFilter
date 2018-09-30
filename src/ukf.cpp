@@ -27,18 +27,18 @@ UKF::UKF() {
 
   // initial covariance matrix
   P_ = MatrixXd(5, 5);
-  P_ << 1, 0, 0, 0, 0,
-        0, 1, 0, 0, 0,
-        0, 0, 1, 0, 0,
-        0, 0, 0, 1, 0,
-        0, 0, 0, 0, 1;
+  P_ << 0.1, 0, 0, 0, 0,
+        0, 0.1, 0, 0, 0,
+        0, 0, 3, 0, 0,
+        0, 0, 0, 0.5, 0,
+        0, 0, 0, 0, 0.5;
   // TODO make sure we don't have to initialize this
 
   // Process noise standard deviation longitudinal acceleration in m/s^2
-  std_a_ = 0.15; // TODO Tune
+  std_a_ = 3.5/2; // Tune
 
   // Process noise standard deviation yaw acceleration in rad/s^2
-  std_yawdd_ = 0.15; // TODO Tune
+  std_yawdd_ = M_PI/4; // Tune
   
   //DO NOT MODIFY measurement noise values below these are provided by the sensor manufacturer.
   // Laser measurement noise standard deviation position1 in m
@@ -101,15 +101,19 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
       Convert radar from polar to cartesian coordinates and initialize state.
       */
       x_ << meas_package.raw_measurements_[0] * cos(meas_package.raw_measurements_[1]),
-          meas_package.raw_measurements_[0] * sin(meas_package.raw_measurements_[1]),
-          0.1,
-          0.1,
-          0.1;
+            meas_package.raw_measurements_[0] * sin(meas_package.raw_measurements_[1]),
+            1.0,
+            0.0,
+            0.0;
       is_initialized_ = true;
     }
     else if (meas_package.sensor_type_ == MeasurementPackage::LASER && use_laser_)
     {
-      x_ << meas_package.raw_measurements_[0], meas_package.raw_measurements_[1], 0, 0, 0;
+      x_ << meas_package.raw_measurements_[0],
+            meas_package.raw_measurements_[1],
+            1.0,
+            0.0,
+            0.0;
       is_initialized_ = true;
     }
     previous_timestamp_ = meas_package.timestamp_;
@@ -137,6 +141,24 @@ void UKF::ProcessMeasurement(MeasurementPackage meas_package) {
   }
 
   previous_timestamp_ = meas_package.timestamp_;
+
+    /*
+  std::cout << "NIS_" << std::endl;
+  for (auto i = NIS_.begin(); i != NIS_.end(); ++i)
+    std::cout << *i << ' ';
+  std:: cout << std::endl;
+
+  static int count = 0;
+  if(count > 20)
+  {
+    plt::clf();
+    plt::plot(NIS_);
+    plt::draw();
+    plt::pause(0.001);
+    count = 0;
+  }
+  count ++;
+*/
 }
 
 /**
@@ -358,6 +380,8 @@ void UKF::UpdateLidar(MeasurementPackage meas_package) {
   //update state mean and covariance matrix
   x_ = x_ + K * z_diff;
   P_ = P_ - K*S*K.transpose();
+
+  NIS_Lidar_.push_back(z_diff.transpose() * S.inverse() * z_diff);
 }
 
 /**
@@ -462,4 +486,6 @@ void UKF::UpdateRadar(MeasurementPackage meas_package) {
   //update state mean and covariance matrix
   x_ = x_ + K * z_diff;
   P_ = P_ - K*S*K.transpose();
+
+  NIS_Radar_.push_back(z_diff.transpose() * S.inverse() * z_diff);
 }
