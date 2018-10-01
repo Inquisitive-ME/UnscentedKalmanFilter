@@ -7,9 +7,9 @@
 
 #include <chrono>
 #include <thread>
-//#include "matplotlibcpp.h"
+#include "matplotlibcpp.h"
 
-//namespace plt = matplotlibcpp;
+namespace plt = matplotlibcpp;
 
 using namespace std;
 
@@ -70,16 +70,16 @@ int main()
       }
     }
     std::vector<float> lidar_baseline(ukf.NIS_Lidar_.size(),5.991);
-    //plt::plot(ukf.NIS_Lidar_);
-    //plt::plot(lidar_baseline);
-    //plt::title("NIS Lidar");
-    //plt::show();
+    plt::plot(ukf.NIS_Lidar_);
+    plt::plot(lidar_baseline);
+    plt::title("NIS Lidar");
+    plt::show();
 
     std::vector<float> radar_baseline(ukf.NIS_Radar_.size(),7.815);
-    //plt::plot(ukf.NIS_Radar_);
-    //plt::plot(radar_baseline);
-    //plt::title("NIS Radar");
-    //plt::show();
+    plt::plot(ukf.NIS_Radar_);
+    plt::plot(radar_baseline);
+    plt::title("NIS Radar");
+    plt::show();
     });
   threadObj.detach();
 

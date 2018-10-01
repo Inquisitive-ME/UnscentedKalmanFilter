@@ -8,9 +8,9 @@ set(CXX_FLAGS "-Wall")
 set(CMAKE_CXX_FLAGS "${CXX_FLAGS}")
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pthread")
 
-#find_package(PythonLibs 2.7)
+find_package(PythonLibs 2.7)
 
-#include_directories(${PYTHON_INCLUDE_PATH})
+include_directories(${PYTHON_INCLUDE_PATH})
 
 set(sources src/ukf.cpp src/main.cpp src/tools.cpp src/matplotlibcpp.h)
 
@@ -28,7 +28,7 @@ endif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 
 add_executable(UnscentedKF ${sources})
 
-#target_include_directories(UnscentedKF PRIVATE ${PYTHON_INCLUDE_DIRS})
-#target_link_libraries(UnscentedKF ${PYTHON_LIBRARIES})
+target_include_directories(UnscentedKF PRIVATE ${PYTHON_INCLUDE_DIRS})
+target_link_libraries(UnscentedKF ${PYTHON_LIBRARIES})
 
 target_link_libraries(UnscentedKF z ssl uv uWS ${PYTHON_LIBRARIES})
